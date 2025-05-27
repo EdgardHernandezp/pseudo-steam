@@ -7,12 +7,12 @@ import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.BucketAlreadyExistsException;
-import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -51,6 +51,18 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
 
     @Override
     public void deleteBucket(String bucketName) throws BucketDoesNotExistException, BucketNotEmptyException {
-
+        try {
+            DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
+            s3Client.deleteBucket(deleteBucketRequest);
+        } catch (NoSuchBucketException e) {
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
+        } catch (AwsServiceException e) {
+            log.error(e.getMessage(), e);
+            if (e.awsErrorDetails().errorCode().equals("BucketNotEmpty")) {
+                log.error("Bucket ({}) is not empty, remove all objects before deleting", bucketName);
+                throw new BucketNotEmptyException(bucketName, e);
+            }
+        }
     }
 }
