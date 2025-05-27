@@ -39,7 +39,14 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
 
     @Override
     public BucketsPage fetchBuckets(Integer limit, String continuationToken) {
-        return null;
+        ListBucketsRequest listBucketsRequest = ListBucketsRequest.builder()
+                .maxBuckets(limit)
+                .continuationToken(continuationToken)
+                .prefix("dev.")
+                .build();
+        ListBucketsResponse bucketsResponse = s3Client.listBuckets(listBucketsRequest);
+        List<BucketsPage.Bucket> buckets = bucketsResponse.buckets().stream().map(bucket -> new BucketsPage.Bucket(bucket.name(), bucket.creationDate())).toList();
+        return new BucketsPage(bucketsResponse.continuationToken(), buckets);
     }
 
     @Override
