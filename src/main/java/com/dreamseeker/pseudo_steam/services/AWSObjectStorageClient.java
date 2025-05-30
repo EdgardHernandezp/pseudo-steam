@@ -30,6 +30,15 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
                     .bucket(newBucketName)
                     .build();
             s3Client.createBucket(createBucketRequest);
+
+            PutBucketVersioningRequest versioningRequest = PutBucketVersioningRequest.builder()
+                    .bucket(newBucketName)
+                    .versioningConfiguration(VersioningConfiguration.builder()
+                            .status(BucketVersioningStatus.ENABLED)
+                            .build())
+                    .build();
+            s3Client.putBucketVersioning(versioningRequest);
+
             return new BucketsPage.Bucket(newBucketName, Instant.now());
         } catch (BucketAlreadyExistsException | BucketAlreadyOwnedByYouException e) {
             log.error("Bucket ({}) already exists", bucketName, e);
