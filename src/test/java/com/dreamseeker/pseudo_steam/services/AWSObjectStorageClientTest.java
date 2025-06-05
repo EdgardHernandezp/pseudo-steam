@@ -37,17 +37,35 @@ class AWSObjectStorageClientTest {
 
     @Test
     @Order(2)
-    void putObjectSuccessfully() throws IOException, BucketDoesNotExistException {
+    void putObjectSinglePartUploadSuccessfully() throws IOException, BucketDoesNotExistException {
         Resource resource = new ClassPathResource("file_1mb.bin");
         byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
         MultipartFile multipartFile = new MockMultipartFile("file_1mb.bin", "file_1mb.bin", "application/zip", content);
         String gameName = "gta-6";
-        ObjectUploadResponse response = awsObjectStorageClient.putObject(studioId, gameName, multipartFile);
+        ObjectUploadResponse response = awsObjectStorageClient.putObjectSinglePartUpload(studioId, gameName, multipartFile);
 
         assertThat(response).isNotNull();
         assertThat(response.gameName()).isEqualTo(gameName);
         assertThat(response.studioId()).isEqualTo(studioId);
         assertThat(response.versionId()).isNotNull();
+    }
+
+    @Test
+    @Order(3)
+    void putObjectMultipartUploadSuccessfully() throws IOException {
+        Resource resource = new ClassPathResource("file_100mb.bin");
+        byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
+        String gameName = "gta-7";
+        ObjectUploadResponse objectUploadResponse = awsObjectStorageClient.putObjectMultiPartUpload(
+                studioId,
+                gameName,
+                new MockMultipartFile("file_100mb.bin", "file_100mb.bin", "application/zip", content)
+        );
+
+        assertThat(objectUploadResponse).isNotNull();
+        assertThat(objectUploadResponse.gameName()).isEqualTo(gameName);
+        assertThat(objectUploadResponse.studioId()).isEqualTo(studioId);
+        assertThat(objectUploadResponse.versionId()).isNotNull();
     }
 
     @Test

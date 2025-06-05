@@ -14,5 +14,7 @@ public interface ObjectStorageClient {
 
     void deleteBucket(String bucketName) throws BucketDoesNotExistException, BucketNotEmptyException;
 
-    ObjectUploadResponse putObject(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException;
+    ObjectUploadResponse putObjectSinglePartUpload(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException;
+
+    ObjectUploadResponse putObjectMultiPartUpload(String studioId, String gameName, MultipartFile file);
 }

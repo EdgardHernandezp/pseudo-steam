@@ -8,14 +8,16 @@ import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +25,10 @@ import java.util.UUID;
 @AllArgsConstructor
 @Component
 public class AWSObjectStorageClient implements ObjectStorageClient {
+
+    private static final long MIN_PART_SIZE = 5 * 1024 * 1024;
+    private static final long MAX_PART_SIZE = 100 * 1024 * 1024; // 100MB for optimal performance
+    private static final int MAX_PARTS = 10000;
 
     private final S3Client s3Client;
 
@@ -81,7 +87,7 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     }
 
     @Override
-    public ObjectUploadResponse putObject(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException {
+    public ObjectUploadResponse putObjectSinglePartUpload(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
                     .bucket(studioId)
@@ -98,5 +104,104 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
             log.error("Bucket ({}) does not exist", studioId);
             throw new BucketDoesNotExistException(studioId, e.getCause());
         }
+    }
+
+    @Override
+    public ObjectUploadResponse putObjectMultiPartUpload(String bucketName, String gameName, MultipartFile file) {
+        String uploadId = null;
+        try {
+            uploadId = initiateMultipartUpload(bucketName, gameName, file);
+            List<CompletedPart> completedParts = uploadParts(bucketName, gameName, file, uploadId);
+            return completeMultipartUpload(bucketName, gameName, completedParts, uploadId);
+        } catch (Exception e) {
+            try {
+                abortMultipartUpload(bucketName, gameName, uploadId);
+            } catch (Exception abortException) {
+                log.error("Failed to abort multipart upload", e);
+            }
+            throw new RuntimeException("Multipart upload failed", e);
+        }
+    }
+
+    private void abortMultipartUpload(String bucketName, String gameName, String uploadId) {
+        AbortMultipartUploadRequest abortRequest = AbortMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(gameName)
+                .uploadId(uploadId)
+                .build();
+        s3Client.abortMultipartUpload(abortRequest);
+    }
+
+    private ObjectUploadResponse completeMultipartUpload(String bucketName, String gameName, List<CompletedPart> completedParts, String uploadId) {
+        CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder()
+                .parts(completedParts)
+                .build();
+        CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(gameName)
+                .uploadId(uploadId)
+                .multipartUpload(completedUpload)
+                .build();
+        CompleteMultipartUploadResponse completeMultipartUploadResponse = s3Client.completeMultipartUpload(completeRequest);
+
+        return new ObjectUploadResponse(bucketName, gameName, completeMultipartUploadResponse.versionId());
+    }
+
+    private List<CompletedPart> uploadParts(String bucketName, String gameName, MultipartFile file, String uploadId) throws IOException {
+        List<CompletedPart> completedParts = new ArrayList<>();
+        PartCalculation calculatedParts = calculateParts(file.getSize());
+        log.info("Number of parts: {}", calculatedParts.partCount);
+        log.info("Parts size: {}", calculatedParts.partSize);
+        for (int i = 0; i < calculatedParts.partCount(); i++) {
+            int partNumber = i + 1;
+            long startPos = (long) i * calculatedParts.partSize();
+            long currentPartSize = Math.min(calculatedParts.partSize(), file.getSize() - startPos);
+            byte[] partData = Arrays.copyOfRange(file.getBytes(), (int) startPos, (int) (startPos + currentPartSize));
+            UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                    .bucket(bucketName)
+                    .key(gameName)
+                    .uploadId(uploadId)
+                    .partNumber(partNumber)
+                    .build();
+            UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadPartRequest, RequestBody.fromBytes(partData));
+
+            log.info("Upload part ({}) successful. Etag: {}", partNumber, uploadPartResponse.eTag());
+            completedParts.add(
+                    CompletedPart.builder()
+                            .partNumber(partNumber)
+                            .eTag(uploadPartResponse.eTag())
+                            .build()
+            );
+        }
+        return completedParts;
+    }
+
+    private String initiateMultipartUpload(String bucketName, String gameName, MultipartFile file) {
+        CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(gameName)
+                .contentType(file.getContentType())
+                .build();
+        String uploadId = s3Client.createMultipartUpload(createRequest).uploadId();
+        log.info("Multipart upload created. Upload ID: {}", uploadId);
+        return uploadId;
+    }
+
+    private PartCalculation calculateParts(long fileSize) {
+        // Start with target part size, but ensure we don't exceed max parts
+        long partSize = Math.max(MIN_PART_SIZE, fileSize / MAX_PARTS);
+
+        // Cap at max part size for performance
+        partSize = Math.min(partSize, MAX_PART_SIZE);
+
+        // Round up to nearest MB for cleaner numbers
+        partSize = ((partSize + 1024 * 1024 - 1) / (1024 * 1024)) * 1024 * 1024;
+
+        int partCount = (int) Math.ceil((double) fileSize / partSize);
+
+        return new PartCalculation(partSize, partCount);
+    }
+
+    record PartCalculation(long partSize, int partCount) {
     }
 }
