@@ -5,16 +5,22 @@ import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
+import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +35,7 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     private static final long MIN_PART_SIZE = 5 * 1024 * 1024;
     private static final long MAX_PART_SIZE = 100 * 1024 * 1024; // 100MB for optimal performance
     private static final int MAX_PARTS = 10000;
+    private static final String OUTPUT_DIRECTORY = "downloads/";
 
     private final S3Client s3Client;
 
@@ -120,6 +127,30 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
                 log.error("Failed to abort multipart upload", e);
             }
             throw new RuntimeException("Multipart upload failed", e);
+        }
+    }
+
+    @Override
+    public void getObject(String bucketName, String gameName, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(gameName)
+                .versionId(versionId)
+                .build();
+        try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
+            Path localPath = Paths.get(OUTPUT_DIRECTORY + gameName);
+            Files.createDirectories(localPath.getParent());
+            Files.copy(response, localPath, StandardCopyOption.REPLACE_EXISTING);
+            log.info("Successfully downloaded {} with version id {} in {}", gameName, response.response().versionId(), localPath);
+        } catch (IOException e) {
+            log.error(e.getMessage(), e);
+            throw new RuntimeException(e);
+        } catch (NoSuchKeyException e) {
+            log.error("The object: {} does not exists", bucketName.concat("/" + gameName));
+            throw new ObjectDoesNotExistsException();
+        } catch (NoSuchBucketException e) {
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
         }
     }
 

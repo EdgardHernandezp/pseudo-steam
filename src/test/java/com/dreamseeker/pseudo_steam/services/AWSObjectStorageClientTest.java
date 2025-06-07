@@ -4,6 +4,7 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
+import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +15,8 @@ import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -25,6 +28,9 @@ class AWSObjectStorageClientTest {
     private AWSObjectStorageClient awsObjectStorageClient;
 
     private String studioId;
+
+    static final String singleUploadGameName = "gta-6";
+    private String versionId;
 
     @Test
     @Order(1)
@@ -41,11 +47,12 @@ class AWSObjectStorageClientTest {
         Resource resource = new ClassPathResource("file_1mb.bin");
         byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
         MultipartFile multipartFile = new MockMultipartFile("file_1mb.bin", "file_1mb.bin", "application/zip", content);
-        String gameName = "gta-6";
-        ObjectUploadResponse response = awsObjectStorageClient.putObjectSinglePartUpload(studioId, gameName, multipartFile);
+
+        ObjectUploadResponse response = awsObjectStorageClient.putObjectSinglePartUpload(studioId, singleUploadGameName, multipartFile);
+        versionId = response.versionId();
 
         assertThat(response).isNotNull();
-        assertThat(response.gameName()).isEqualTo(gameName);
+        assertThat(response.gameName()).isEqualTo(singleUploadGameName);
         assertThat(response.studioId()).isEqualTo(studioId);
         assertThat(response.versionId()).isNotNull();
     }
@@ -66,6 +73,31 @@ class AWSObjectStorageClientTest {
         assertThat(objectUploadResponse.gameName()).isEqualTo(gameName);
         assertThat(objectUploadResponse.studioId()).isEqualTo(studioId);
         assertThat(objectUploadResponse.versionId()).isNotNull();
+    }
+
+    @Test
+    @Order(4)
+    void downloadObjectSuccessfully() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        awsObjectStorageClient.getObject(studioId, singleUploadGameName, versionId);
+
+        Path downloadedFilePath = Path.of("downloads", singleUploadGameName);
+        assertThat(Files.exists(downloadedFilePath)).isTrue();
+    }
+
+    @Test
+    @Order(5)
+    void downloadObjectFailsObjectDoesNotExists() {
+        assertThatThrownBy(() -> awsObjectStorageClient.getObject(studioId, "non-existing-game", null))
+                .isInstanceOf(ObjectDoesNotExistsException.class);
+    }
+
+    @Test
+    @Order(6)
+    void downloadObjectSuccessfullyWithoutVersionId() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        awsObjectStorageClient.getObject(studioId, singleUploadGameName, null);
+
+        Path downloadedFilePath = Path.of("downloads", singleUploadGameName);
+        assertThat(Files.exists(downloadedFilePath)).isTrue();
     }
 
     @Test
