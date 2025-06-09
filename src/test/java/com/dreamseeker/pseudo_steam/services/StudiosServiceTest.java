@@ -19,14 +19,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class BucketServiceTest {
+class StudiosServiceTest {
     @InjectMocks
-    private BucketService bucketService;
+    private StudiosService studiosService;
     @Mock
     private ObjectStorageClient objectStorageClient;
 
     @Test
-    void createBucketThrowsBucketNameExistsExceptionWhenBucketAlreadyExists() throws BucketNameExistsException {
+    void createBucketThrowsBucketNameExistsExceptionWhenStudioAlreadyExists() throws BucketNameExistsException {
         String bucketName = "existing-bucket";
         BucketNameExistsException bucketNameExistsException = new BucketNameExistsException(
                 "test-bucket",
@@ -34,30 +34,30 @@ class BucketServiceTest {
         );
         doThrow(new BucketNameExistsException(bucketName, bucketNameExistsException)).when(objectStorageClient).createBucket(bucketName);
 
-        assertThrows(BucketNameExistsException.class, () -> bucketService.createBucket(bucketName));
+        assertThrows(BucketNameExistsException.class, () -> studiosService.createStudio(bucketName));
     }
 
     @Test
-    void fetchBucketsReturnsListOfBuckets() {
+    void fetchBucketsReturnsListOfStudios() {
         BucketsPage buckets = new BucketsPage("1", List.of(new BucketsPage.Bucket("test-bucket", Instant.now())));
         when(objectStorageClient.fetchBuckets(anyInt(), anyString())).thenReturn(buckets);
 
-        BucketsPage result = bucketService.fetchBuckets(10, "1");
+        BucketsPage result = studiosService.fetchStudios(10, "1");
 
         assertEquals(buckets, result);
     }
 
     @Test
-    void deleteBucketThrowsBucketNotEmptyExceptionWhenBucketIsNotEmpty() throws BucketNotEmptyException, BucketDoesNotExistException {
+    void deleteBucketThrowsBucketNotEmptyExceptionWhenStudioIsNotEmpty() throws BucketNotEmptyException, BucketDoesNotExistException {
         String bucketName = "non-empty-bucket";
         AwsServiceException bucketNameIsTaken = S3Exception.builder().message("Bucket not empty").build();
         doThrow(new BucketNotEmptyException(bucketName, bucketNameIsTaken)).when(objectStorageClient).deleteBucket(bucketName);
 
-        assertThrows(BucketNotEmptyException.class, () -> bucketService.deleteBucket(bucketName));
+        assertThrows(BucketNotEmptyException.class, () -> studiosService.deleteStudio(bucketName));
     }
 
     @Test
-    void deleteBucketThrowsBucketDoesNotExistExceptionWhenBucketDoesNotExist() throws BucketNotEmptyException, BucketDoesNotExistException {
+    void deleteBucketThrowsBucketDoesNotExistExceptionWhenStudioDoesNotExist() throws BucketNotEmptyException, BucketDoesNotExistException {
         String bucketName = "non-existent-bucket";
         BucketNameExistsException bucketNameExistsException = new BucketNameExistsException(
                 "test-bucket",
@@ -65,13 +65,13 @@ class BucketServiceTest {
         );
         doThrow(new BucketDoesNotExistException(bucketName, bucketNameExistsException)).when(objectStorageClient).deleteBucket(bucketName);
 
-        assertThrows(BucketDoesNotExistException.class, () -> bucketService.deleteBucket(bucketName));
+        assertThrows(BucketDoesNotExistException.class, () -> studiosService.deleteStudio(bucketName));
     }
 
     @Test
-    void deleteBucketSuccessfullyDeletesBucket() throws BucketNotEmptyException, BucketDoesNotExistException {
+    void deleteBucketSuccessfullyDeletesStudio() throws BucketNotEmptyException, BucketDoesNotExistException {
         String bucketName = "empty-bucket";
-        assertDoesNotThrow(() -> bucketService.deleteBucket(bucketName));
+        assertDoesNotThrow(() -> studiosService.deleteStudio(bucketName));
         verify(objectStorageClient, times(1)).deleteBucket(bucketName);
     }
 }

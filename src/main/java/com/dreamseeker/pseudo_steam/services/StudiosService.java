@@ -11,18 +11,18 @@ import org.springframework.stereotype.Service;
 @Service
 @AllArgsConstructor
 @Slf4j
-public class BucketService {
+public class StudiosService {
     private final ObjectStorageClient objectStorageClient;
 
-    public BucketsPage.Bucket createBucket(String bucketName) throws BucketNameExistsException {
-        return objectStorageClient.createBucket(bucketName);
+    public BucketsPage.Bucket createStudio(String studioName) throws BucketNameExistsException {
+        return objectStorageClient.createBucket(studioName);
     }
 
-    public BucketsPage fetchBuckets(Integer limit, String continuationToken) {
+    public BucketsPage fetchStudios(Integer limit, String continuationToken) {
         return objectStorageClient.fetchBuckets(limit, continuationToken);
     }
 
-    public void deleteBucket(String bucketName) throws BucketNotEmptyException, BucketDoesNotExistException {
-        objectStorageClient.deleteBucket(bucketName);
+    public void deleteStudio(String studioId) throws BucketNotEmptyException, BucketDoesNotExistException {
+        objectStorageClient.deleteBucket(studioId);
     }
 }

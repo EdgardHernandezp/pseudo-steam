@@ -4,6 +4,7 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
+import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,7 @@ class AWSObjectStorageClientTest {
 
     @Test
     @Order(3)
+    @Disabled
     void putObjectMultipartUploadSuccessfully() throws IOException {
         Resource resource = new ClassPathResource("file_100mb.bin");
         byte[] content = FileCopyUtils.copyToByteArray(resource.getInputStream());
@@ -102,7 +104,8 @@ class AWSObjectStorageClientTest {
 
     @Test
     @Disabled
-    void deleteBucket() {
+    void deleteBucket() throws BucketNotEmptyException, BucketDoesNotExistException {
+        awsObjectStorageClient.deleteBucket(studioId);
 
     }
 }

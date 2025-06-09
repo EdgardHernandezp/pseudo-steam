@@ -94,35 +94,35 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     }
 
     @Override
-    public ObjectUploadResponse putObjectSinglePartUpload(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException {
+    public ObjectUploadResponse putObjectSinglePartUpload(String bucketName, String objectKey, MultipartFile file) throws BucketDoesNotExistException {
         try {
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(studioId)
-                    .key(gameName)
+                    .bucket(bucketName)
+                    .key(objectKey)
                     .contentType(file.getContentType())
                     .build();
 
             PutObjectResponse response = s3Client.putObject(request, RequestBody.fromBytes(file.getBytes()));
-            return new ObjectUploadResponse(studioId, gameName, response.versionId());
+            return new ObjectUploadResponse(bucketName, objectKey, response.versionId());
         } catch (IOException e) {
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);
         } catch (NoSuchBucketException e) {
-            log.error("Bucket ({}) does not exist", studioId);
-            throw new BucketDoesNotExistException(studioId, e.getCause());
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
         }
     }
 
     @Override
-    public ObjectUploadResponse putObjectMultiPartUpload(String bucketName, String gameName, MultipartFile file) {
+    public ObjectUploadResponse putObjectMultiPartUpload(String bucketName, String objectKey, MultipartFile file) {
         String uploadId = null;
         try {
-            uploadId = initiateMultipartUpload(bucketName, gameName, file);
-            List<CompletedPart> completedParts = uploadParts(bucketName, gameName, file, uploadId);
-            return completeMultipartUpload(bucketName, gameName, completedParts, uploadId);
+            uploadId = initiateMultipartUpload(bucketName, objectKey, file);
+            List<CompletedPart> completedParts = uploadParts(bucketName, objectKey, file, uploadId);
+            return completeMultipartUpload(bucketName, objectKey, completedParts, uploadId);
         } catch (Exception e) {
             try {
-                abortMultipartUpload(bucketName, gameName, uploadId);
+                abortMultipartUpload(bucketName, objectKey, uploadId);
             } catch (Exception abortException) {
                 log.error("Failed to abort multipart upload", e);
             }
@@ -131,22 +131,22 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     }
 
     @Override
-    public void getObject(String bucketName, String gameName, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+    public void getObject(String bucketName, String objectKey, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
-                .key(gameName)
+                .key(objectKey)
                 .versionId(versionId)
                 .build();
         try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest)) {
-            Path localPath = Paths.get(OUTPUT_DIRECTORY + gameName);
+            Path localPath = Paths.get(OUTPUT_DIRECTORY + objectKey);
             Files.createDirectories(localPath.getParent());
             Files.copy(response, localPath, StandardCopyOption.REPLACE_EXISTING);
-            log.info("Successfully downloaded {} with version id {} in {}", gameName, response.response().versionId(), localPath);
+            log.info("Successfully downloaded {} with version id {} in {}", objectKey, response.response().versionId(), localPath);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
             throw new RuntimeException(e);
         } catch (NoSuchKeyException e) {
-            log.error("The object: {} does not exists", bucketName.concat("/" + gameName));
+            log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
             throw new ObjectDoesNotExistsException();
         } catch (NoSuchBucketException e) {
             log.error("Bucket ({}) does not exist", bucketName);

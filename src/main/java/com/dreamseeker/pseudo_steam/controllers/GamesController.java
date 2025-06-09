@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/buckets/{studio-id}/games")
+@RequestMapping("/studios/{studio-id}/games")
 @AllArgsConstructor
 public class GamesController {
 

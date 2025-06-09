@@ -15,11 +15,11 @@ public interface ObjectStorageClient {
 
     void deleteBucket(String bucketName) throws BucketDoesNotExistException, BucketNotEmptyException;
 
-    ObjectUploadResponse putObjectSinglePartUpload(String studioId, String gameName, MultipartFile file) throws BucketDoesNotExistException;
+    ObjectUploadResponse putObjectSinglePartUpload(String bucketName, String objectKey, MultipartFile file) throws BucketDoesNotExistException;
 
-    ObjectUploadResponse putObjectMultiPartUpload(String studioId, String gameName, MultipartFile file);
+    ObjectUploadResponse putObjectMultiPartUpload(String bucketName, String objectKey, MultipartFile file);
 
-    void getObject(String studioId, String gameName, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
+    void getObject(String bucketName, String objectKey, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
 
     String deleteObject(String bucketName, String objectKey, String versionId) throws BucketDoesNotExistException, ObjectDoesNotExistsException;
 }

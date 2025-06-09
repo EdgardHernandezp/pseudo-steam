@@ -4,35 +4,35 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
-import com.dreamseeker.pseudo_steam.services.BucketService;
+import com.dreamseeker.pseudo_steam.services.StudiosService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/buckets")
+@RequestMapping("/studios")
 @AllArgsConstructor
-public class S3BucketController {
+public class StudiosController {
 
-    private final BucketService bucketService;
+    private final StudiosService studiosService;
 
-    @PostMapping("/{bucketName}")
-    public ResponseEntity<String> createBucket(@PathVariable String bucketName) throws BucketNameExistsException {
-        BucketsPage.Bucket bucket = bucketService.createBucket(bucketName);
+    @PostMapping("/{studio-name}")
+    public ResponseEntity<String> createStudio(@PathVariable("studio-name") String studioName) throws BucketNameExistsException {
+        BucketsPage.Bucket bucket = studiosService.createStudio(studioName);
         return ResponseEntity.status(HttpStatus.OK).body("Bucket created with name: " + bucket.bucketName());
     }
 
     @GetMapping
-    public ResponseEntity<BucketsPage> listAllBuckets(
+    public ResponseEntity<BucketsPage> listAllStudios(
             @RequestParam(required = false) String continuationToken,
             @RequestParam(required = false, defaultValue = "10") Integer limit) {
-        return ResponseEntity.ok(bucketService.fetchBuckets(limit, continuationToken));
+        return ResponseEntity.ok(studiosService.fetchStudios(limit, continuationToken));
     }
 
-    @DeleteMapping("/{bucketName}")
-    public ResponseEntity<Void> deleteBucket(@PathVariable String bucketName) throws BucketNotEmptyException, BucketDoesNotExistException {
-        bucketService.deleteBucket(bucketName);
+    @DeleteMapping("/{studio-id}")
+    public ResponseEntity<Void> deleteStudio(@PathVariable("studio-id") String studioId) throws BucketNotEmptyException, BucketDoesNotExistException {
+        studiosService.deleteStudio(studioId);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 }
