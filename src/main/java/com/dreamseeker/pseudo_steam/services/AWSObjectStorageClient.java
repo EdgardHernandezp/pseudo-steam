@@ -154,6 +154,20 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
         }
     }
 
+    @Override
+    public String deleteObject(String bucketName, String objectKey, String versionId) throws BucketDoesNotExistException, ObjectDoesNotExistsException {
+        try {
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder().bucket(bucketName).key(objectKey).versionId(versionId).build();
+            return s3Client.deleteObject(deleteObjectRequest).versionId();
+        } catch (NoSuchBucketException e) {
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
+        } catch (NoSuchKeyException e) {
+            log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
+            throw new ObjectDoesNotExistsException();
+        }
+    }
+
     private void abortMultipartUpload(String bucketName, String gameName, String uploadId) {
         AbortMultipartUploadRequest abortRequest = AbortMultipartUploadRequest.builder()
                 .bucket(bucketName)

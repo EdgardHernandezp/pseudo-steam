@@ -2,6 +2,7 @@ package com.dreamseeker.pseudo_steam.services;
 
 import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
+import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,4 +21,7 @@ public class GamesService {
             return objectStorageClient.putObjectSinglePartUpload(studioId, gameName, file);
     }
 
+    public void deleteGame(String studioId, String gameName) throws BucketDoesNotExistException, ObjectDoesNotExistsException {
+        objectStorageClient.deleteObject(studioId, gameName, null);
+    }
 }
