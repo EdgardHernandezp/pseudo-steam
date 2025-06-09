@@ -20,4 +20,6 @@ public interface ObjectStorageClient {
     ObjectUploadResponse putObjectMultiPartUpload(String studioId, String gameName, MultipartFile file);
 
     void getObject(String studioId, String gameName, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
+
+    String deleteObject(String bucketName, String objectKey, String versionId) throws BucketDoesNotExistException, ObjectDoesNotExistsException;
 }
