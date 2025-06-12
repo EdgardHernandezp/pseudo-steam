@@ -18,9 +18,9 @@ public class StudiosController {
     private final StudiosService studiosService;
 
     @PostMapping("/{studio-name}")
-    public ResponseEntity<String> createStudio(@PathVariable("studio-name") String studioName) throws BucketNameExistsException {
+    public ResponseEntity<BucketsPage.Bucket> createStudio(@PathVariable("studio-name") String studioName) throws BucketNameExistsException {
         BucketsPage.Bucket bucket = studiosService.createStudio(studioName);
-        return ResponseEntity.status(HttpStatus.OK).body("Bucket created with name: " + bucket.bucketName());
+        return ResponseEntity.status(HttpStatus.OK).body(bucket);
     }
 
     @GetMapping

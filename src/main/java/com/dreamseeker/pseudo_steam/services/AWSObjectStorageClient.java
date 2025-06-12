@@ -4,7 +4,6 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
-import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,9 +11,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.paginators.ListObjectVersionsIterable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -76,21 +77,44 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     }
 
     @Override
-    public void deleteBucket(String bucketName) throws BucketDoesNotExistException, BucketNotEmptyException {
+    public void deleteBucket(String bucketName) throws BucketDoesNotExistException {
         try {
+            deleteObjects(bucketName);
             DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
             s3Client.deleteBucket(deleteBucketRequest);
         } catch (NoSuchBucketException e) {
             log.error("Bucket ({}) does not exist", bucketName);
             throw new BucketDoesNotExistException(bucketName, e.getCause());
-        } catch (AwsServiceException e) {
+        } catch (SdkClientException | AwsServiceException e) {
             log.error(e.getMessage(), e);
-            if (e.awsErrorDetails().errorCode().equals("BucketNotEmpty")) {
-                log.error("Bucket ({}) is not empty, remove all objects before deleting", bucketName);
-                throw new BucketNotEmptyException(bucketName, e);
-            }
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    private void deleteObjects(String bucketName) {
+        List<ObjectIdentifier> objectIdentifiers = new ArrayList<>();
+        ListObjectVersionsRequest listObjectVersionsRequest = ListObjectVersionsRequest.builder().bucket(bucketName).build();
+        ListObjectVersionsIterable listObjectVersionsResponses = s3Client.listObjectVersionsPaginator(listObjectVersionsRequest);
+        for (ListObjectVersionsResponse listObjectVersionsResponse : listObjectVersionsResponses) {
+
+            listObjectVersionsResponse.versions().forEach(objectVersion -> {
+                ObjectIdentifier objectIdentifier = ObjectIdentifier.builder().key(objectVersion.key()).versionId(objectVersion.versionId()).build();
+                objectIdentifiers.add(objectIdentifier);
+            });
+            log.info("Found {} previous versions", listObjectVersionsResponse.versions().size());
+
+            listObjectVersionsResponse.deleteMarkers().forEach(deleteMarker -> {
+                ObjectIdentifier objectIdentifier = ObjectIdentifier.builder().key(deleteMarker.key()).versionId(deleteMarker.versionId()).build();
+                objectIdentifiers.add(objectIdentifier);
+            });
+            log.info("Found {} delete markers", listObjectVersionsResponse.deleteMarkers().size());
         }
 
+        if (!objectIdentifiers.isEmpty()) {
+            log.info("Deleting {} previous versions/delete markers in bucket {}", objectIdentifiers.size(), bucketName);
+            Delete deletions = Delete.builder().objects(objectIdentifiers).build();
+            s3Client.deleteObjects(DeleteObjectsRequest.builder().bucket(bucketName).delete(deletions).build());
+        }
     }
 
     @Override
