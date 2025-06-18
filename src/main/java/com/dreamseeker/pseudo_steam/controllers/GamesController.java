@@ -11,6 +11,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/studios/{studio-id}/games")
 @AllArgsConstructor
@@ -35,6 +37,15 @@ public class GamesController {
             @PathVariable("studio-id") String studioId,
             @PathVariable("game-name") String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         GameInfo gameInfo = gamesService.fetchGameInfo(studioId, gameName);
+        return ResponseEntity.ok().body(gameInfo);
+    }
+
+    @PutMapping("/{game-name}")
+    public ResponseEntity<GameInfo> modifyGameInfo(
+            @PathVariable("studio-id") String studioId,
+            @PathVariable("game-name") String gameName,
+            @RequestBody Map<String, String> metadata) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        GameInfo gameInfo = gamesService.modifyGameInfo(studioId, gameName, metadata);
         return ResponseEntity.ok().body(gameInfo);
     }
 

@@ -9,6 +9,8 @@ import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @AllArgsConstructor
 public class GamesService {
@@ -28,5 +30,9 @@ public class GamesService {
 
     public GameInfo fetchGameInfo(String studioId, String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         return objectStorageClient.fetchObjectMetadata(studioId, gameName);
+    }
+
+    public GameInfo modifyGameInfo(String studioId, String gameName, Map<String, String> metadata) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        return objectStorageClient.modifyObjectMetadata(studioId, gameName, metadata);
     }
 }
