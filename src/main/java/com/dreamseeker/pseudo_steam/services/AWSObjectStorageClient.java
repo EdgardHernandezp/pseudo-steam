@@ -1,7 +1,6 @@
 package com.dreamseeker.pseudo_steam.services;
 
-import com.dreamseeker.pseudo_steam.domains.BucketsPage;
-import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
+import com.dreamseeker.pseudo_steam.domains.*;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
@@ -16,17 +15,19 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectVersionsIterable;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedUploadPartRequest;
+import software.amazon.awssdk.services.s3.presigner.model.UploadPartPresignRequest;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @AllArgsConstructor
@@ -39,6 +40,7 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     private static final String OUTPUT_DIRECTORY = "downloads/";
 
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     @Override
     public BucketsPage.Bucket createBucket(String bucketName) throws BucketNameExistsException {
@@ -190,6 +192,86 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
             log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
             throw new ObjectDoesNotExistsException();
         }
+    }
+
+    @Override
+    public InitiateUploadResponse initiateUpload(String bucketName, InitiateUploadRequest initiateUploadRequest) {
+        CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(initiateUploadRequest.gameName())
+                .contentType(initiateUploadRequest.contentType())
+                .build();
+        String uploadId = s3Client.createMultipartUpload(createRequest).uploadId();
+
+        PartCalculation calculatedParts = calculateParts(initiateUploadRequest.fileSize());
+        List<PreSignedPartUrl> preSignedUrls = generatePreSignedUrls(
+                bucketName,
+                initiateUploadRequest.gameName(),
+                uploadId,
+                calculatedParts.partCount(),
+                calculatedParts.partSize(),
+                initiateUploadRequest.fileSize()
+        );
+
+        log.info("Initiated multipart upload for bucket: {} with uploadId: {} and {} parts",
+                initiateUploadRequest.gameName(), uploadId, calculatedParts.partCount());
+        return new InitiateUploadResponse(uploadId, initiateUploadRequest.gameName(), preSignedUrls);
+    }
+
+    @Override
+    public void completeUpload(String bucketName, CompleteUploadRequest completeUploadRequest) {
+        List<CompleteUploadRequest.CompletedPart> sortedParts = completeUploadRequest.parts().stream()
+                .sorted(Comparator.comparing(CompleteUploadRequest.CompletedPart::partNumber))
+                .toList();
+        List<software.amazon.awssdk.services.s3.model.CompletedPart> s3Parts = sortedParts.stream()
+                .map(part -> software.amazon.awssdk.services.s3.model.CompletedPart.builder()
+                        .partNumber(part.partNumber())
+                        .eTag(part.etag())
+                        .build())
+                .collect(Collectors.toList());
+        CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(completeUploadRequest.key())
+                .uploadId(completeUploadRequest.uploadId())
+                .multipartUpload(CompletedMultipartUpload.builder()
+                        .parts(s3Parts)
+                        .build())
+                .build();
+
+        CompleteMultipartUploadResponse response = s3Client.completeMultipartUpload(completeRequest);
+        log.info("Successfully completed multipart upload in bucket {} for key: {} with ETag: {}",
+                bucketName, completeUploadRequest.key(), response.eTag());
+    }
+
+    private List<PreSignedPartUrl> generatePreSignedUrls(String bucketName, String objectKey, String uploadId,
+                                                         int partCount, long partSize, long totalFileSize) {
+        List<PreSignedPartUrl> preSignedUrls = new ArrayList<>();
+        for (int partNumber = 1; partNumber <= partCount; partNumber++) {
+            long currentPartSize = partSize;
+            if (partNumber == partCount)
+                currentPartSize = totalFileSize - (partSize * (partCount - 1));
+
+            UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .uploadId(uploadId)
+                    .partNumber(partNumber)
+                    .build();
+
+            UploadPartPresignRequest presignRequest = UploadPartPresignRequest.builder()
+                    .signatureDuration(Duration.ofHours(1))
+                    .uploadPartRequest(uploadPartRequest)
+                    .build();
+            PresignedUploadPartRequest presignedRequest = s3Presigner.presignUploadPart(presignRequest);
+
+            preSignedUrls.add(new PreSignedPartUrl(
+                    partNumber,
+                    presignedRequest.url().toString(),
+                    currentPartSize
+            ));
+        }
+
+        return preSignedUrls;
     }
 
     private void abortMultipartUpload(String bucketName, String gameName, String uploadId) {
