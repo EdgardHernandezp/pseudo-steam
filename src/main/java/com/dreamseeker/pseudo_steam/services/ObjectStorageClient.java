@@ -25,4 +25,6 @@ public interface ObjectStorageClient {
     InitiateUploadResponse initiateUpload(String studioId, InitiateUploadRequest initiateUploadRequest);
 
     void completeUpload(String studioId, CompleteUploadRequest completeUploadRequest);
+
+    GameInfo fetchObjectMetadata(String studioId, String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
 }

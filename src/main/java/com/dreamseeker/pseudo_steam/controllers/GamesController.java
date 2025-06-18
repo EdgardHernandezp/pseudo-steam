@@ -1,6 +1,7 @@
 package com.dreamseeker.pseudo_steam.controllers;
 
 import com.dreamseeker.pseudo_steam.domains.CompleteUploadRequest;
+import com.dreamseeker.pseudo_steam.domains.GameInfo;
 import com.dreamseeker.pseudo_steam.domains.InitiateUploadRequest;
 import com.dreamseeker.pseudo_steam.domains.InitiateUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
@@ -27,6 +28,14 @@ public class GamesController {
     public ResponseEntity<Void> completeGameUpload(@PathVariable("studio-id") String studioId, @RequestBody CompleteUploadRequest completeGameUpload) {
             gamesService.completeGameUpload(studioId, completeGameUpload);
             return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{game-name}")
+    public ResponseEntity<GameInfo> fetchGameInfo(
+            @PathVariable("studio-id") String studioId,
+            @PathVariable("game-name") String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        GameInfo gameInfo = gamesService.fetchGameInfo(studioId, gameName);
+        return ResponseEntity.ok().body(gameInfo);
     }
 
     @DeleteMapping("/{game-name}")

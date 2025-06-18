@@ -3,7 +3,7 @@ package com.dreamseeker.pseudo_steam.services;
 import com.dreamseeker.pseudo_steam.domains.*;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
-import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
+import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,8 +20,9 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 @SpringBootTest
@@ -31,13 +32,15 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
 
     @Autowired
     private AWSObjectStorageClient awsObjectStorageClient;
-    @Autowired
-    private S3ClientUtils s3ClientUtils;
 
     private String studioId;
     private InitiateUploadResponse initiateUploadResponse;
     private byte[] content;
     private RestClient restClient;
+
+    public static final String GENRE_ADVENTURE = "adventure";
+    public static final String VERSION = "v1.0";
+    public static final String GAME_NAME = "the-last-of-us";
 
     @BeforeAll
     void createBucket() throws BucketNameExistsException, IOException {
@@ -52,7 +55,8 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
     @Test
     @Order(1)
     void preSignedUrlsAreGeneratedSuccessfully() {
-        InitiateUploadRequest initiateUploadRequest = new InitiateUploadRequest("the-last-of-us", content.length, "application/zip");
+        Map<String, String> metadata = Map.of("genre", GENRE_ADVENTURE, "version", VERSION);
+        InitiateUploadRequest initiateUploadRequest = new InitiateUploadRequest(GAME_NAME, content.length, "application/zip", metadata);
         initiateUploadResponse = awsObjectStorageClient.initiateUpload(studioId, initiateUploadRequest);
 
         assertThat(initiateUploadResponse.uploadId()).isNotNull();
@@ -64,7 +68,7 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
 
     @Test
     @Order(2)
-    void objectPartsAreUploadedSuccessfully() throws URISyntaxException {
+    void objectPartsAreUploadedSuccessfully() throws URISyntaxException, ObjectDoesNotExistsException, BucketDoesNotExistException {
         List<CompleteUploadRequest.CompletedPart> completedParts = new ArrayList<>();
 
         for (PreSignedPartUrl presignedPartUrl : initiateUploadResponse.presignedUrls()) {
@@ -98,7 +102,13 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
         );
         awsObjectStorageClient.completeUpload(studioId, completeUploadRequest);
 
-        assertThat(s3ClientUtils.doesObjectExists(studioId, initiateUploadResponse.gameName())).isTrue();
+        GameInfo gameInfo = awsObjectStorageClient.fetchObjectMetadata(studioId, GAME_NAME);
+
+        assertThat(gameInfo).isNotNull();
+        assertThat(gameInfo.studioId()).isEqualTo(studioId);
+        assertThat(gameInfo.gameName()).isEqualTo(GAME_NAME);
+        assertThat(gameInfo.genre()).isEqualTo(GENRE_ADVENTURE);
+        assertThat(gameInfo.version()).isEqualTo(VERSION);
     }
 
     @AfterAll
