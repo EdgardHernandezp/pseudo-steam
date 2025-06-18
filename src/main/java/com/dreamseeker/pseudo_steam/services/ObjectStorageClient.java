@@ -7,6 +7,8 @@ import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 public interface ObjectStorageClient {
     BucketsPage.Bucket createBucket(String bucketName) throws BucketNameExistsException;
 
@@ -26,5 +28,7 @@ public interface ObjectStorageClient {
 
     void completeUpload(String studioId, CompleteUploadRequest completeUploadRequest);
 
-    GameInfo fetchObjectMetadata(String studioId, String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
+    GameInfo fetchObjectMetadata(String bucketName, String objectKey) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
+
+    GameInfo modifyObjectMetadata(String bucketName, String objectKey, Map<String, String> metadata) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
 }

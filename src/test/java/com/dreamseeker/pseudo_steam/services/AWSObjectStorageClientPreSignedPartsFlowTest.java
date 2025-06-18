@@ -4,6 +4,7 @@ import com.dreamseeker.pseudo_steam.domains.*;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
+import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.client.RestClient;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
 
 import java.io.IOException;
 import java.net.URI;
@@ -32,6 +34,8 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
 
     @Autowired
     private AWSObjectStorageClient awsObjectStorageClient;
+    @Autowired
+    private S3ClientUtils s3ClientUtils;
 
     private String studioId;
     private InitiateUploadResponse initiateUploadResponse;
@@ -39,6 +43,7 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
     private RestClient restClient;
 
     public static final String GENRE_ADVENTURE = "adventure";
+    private static final String STEALTH_GENRE = "stealth";
     public static final String VERSION = "v1.0";
     public static final String GAME_NAME = "the-last-of-us";
 
@@ -109,6 +114,26 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
         assertThat(gameInfo.gameName()).isEqualTo(GAME_NAME);
         assertThat(gameInfo.genre()).isEqualTo(GENRE_ADVENTURE);
         assertThat(gameInfo.version()).isEqualTo(VERSION);
+    }
+
+    @Test
+    @Order(3)
+    void metadataIsModifiedSuccessfully() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, null);
+        assertThat(listObjectVersionsResponse.versions()).hasSize(1);
+
+        awsObjectStorageClient.modifyObjectMetadata(studioId, GAME_NAME, Map.of("genre", STEALTH_GENRE));
+
+        GameInfo gameInfo = awsObjectStorageClient.fetchObjectMetadata(studioId, GAME_NAME);
+
+        assertThat(gameInfo).isNotNull();
+        assertThat(gameInfo.studioId()).isEqualTo(studioId);
+        assertThat(gameInfo.gameName()).isEqualTo(GAME_NAME);
+        assertThat(gameInfo.genre()).isEqualTo(STEALTH_GENRE);
+        assertThat(gameInfo.version()).isEqualTo(VERSION);
+
+        listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, null);
+        assertThat(listObjectVersionsResponse.versions()).hasSize(2);
     }
 
     @AfterAll

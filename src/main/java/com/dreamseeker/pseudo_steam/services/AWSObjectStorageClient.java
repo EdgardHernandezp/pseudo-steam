@@ -249,14 +249,46 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     @Override
     public GameInfo fetchObjectMetadata(String bucketName, String objectKey) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         try {
+            Map<String, String> metadata = performHeadObjectRequest(bucketName, objectKey);
+            String genre = metadata.get(GENRE);
+            String version = metadata.get(VERSION);
+            return new GameInfo(bucketName, objectKey, genre, version);
+        } catch (NoSuchKeyException e) {
+            log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
+            throw new ObjectDoesNotExistsException();
+        } catch (NoSuchBucketException e) {
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
+        }
+    }
+
+    private Map<String, String> performHeadObjectRequest(String bucketName, String objectKey) {
             HeadObjectRequest headRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)
                     .build();
-            HeadObjectResponse headObjectResponse = s3Client.headObject(headRequest);
-            String genre = headObjectResponse.metadata().get(GENRE);
-            String version = headObjectResponse.metadata().get(VERSION);
-            return new GameInfo(bucketName, objectKey, genre, version);
+            return s3Client.headObject(headRequest).metadata();
+    }
+
+    @Override
+    public GameInfo modifyObjectMetadata(String bucketName, String objectKey, Map<String, String> metadata) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        try {
+            Map<String, String> currentMetadata = performHeadObjectRequest(bucketName, objectKey);
+            Map<String, String> newMetadata = new HashMap<>(currentMetadata);
+            newMetadata.put(GENRE, metadata.get(GENRE));
+
+            CopyObjectRequest copyRequest = CopyObjectRequest.builder()
+                    .sourceBucket(bucketName)
+                    .sourceKey(objectKey)
+                    .destinationBucket(bucketName)
+                    .destinationKey(objectKey)
+                    .metadata(newMetadata)
+                    .metadataDirective(MetadataDirective.REPLACE)
+                    .build();
+
+            s3Client.copyObject(copyRequest);
+
+            return new GameInfo(bucketName, objectKey, newMetadata.get(GENRE), newMetadata.get(VERSION));
         } catch (NoSuchKeyException e) {
             log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
             throw new ObjectDoesNotExistsException();
