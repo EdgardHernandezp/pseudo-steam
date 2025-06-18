@@ -38,6 +38,8 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     private static final long MAX_PART_SIZE = 100 * 1024 * 1024; // 100MB for optimal performance
     private static final int MAX_PARTS = 10000;
     private static final String OUTPUT_DIRECTORY = "downloads/";
+    private static final String VERSION = "version";
+    private static final String GENRE = "genre";
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -200,6 +202,7 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
                 .bucket(bucketName)
                 .key(initiateUploadRequest.gameName())
                 .contentType(initiateUploadRequest.contentType())
+                .metadata(initiateUploadRequest.metadata())
                 .build();
         String uploadId = s3Client.createMultipartUpload(createRequest).uploadId();
 
@@ -241,6 +244,26 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
         CompleteMultipartUploadResponse response = s3Client.completeMultipartUpload(completeRequest);
         log.info("Successfully completed multipart upload in bucket {} for key: {} with ETag: {}",
                 bucketName, completeUploadRequest.key(), response.eTag());
+    }
+
+    @Override
+    public GameInfo fetchObjectMetadata(String bucketName, String objectKey) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        try {
+            HeadObjectRequest headRequest = HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+            HeadObjectResponse headObjectResponse = s3Client.headObject(headRequest);
+            String genre = headObjectResponse.metadata().get(GENRE);
+            String version = headObjectResponse.metadata().get(VERSION);
+            return new GameInfo(bucketName, objectKey, genre, version);
+        } catch (NoSuchKeyException e) {
+            log.error("The object: {} does not exists", bucketName.concat("/" + objectKey));
+            throw new ObjectDoesNotExistsException();
+        } catch (NoSuchBucketException e) {
+            log.error("Bucket ({}) does not exist", bucketName);
+            throw new BucketDoesNotExistException(bucketName, e.getCause());
+        }
     }
 
     private List<PreSignedPartUrl> generatePreSignedUrls(String bucketName, String objectKey, String uploadId,

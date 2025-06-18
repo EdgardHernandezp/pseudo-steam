@@ -1,6 +1,7 @@
 package com.dreamseeker.pseudo_steam.services;
 
 import com.dreamseeker.pseudo_steam.domains.CompleteUploadRequest;
+import com.dreamseeker.pseudo_steam.domains.GameInfo;
 import com.dreamseeker.pseudo_steam.domains.InitiateUploadRequest;
 import com.dreamseeker.pseudo_steam.domains.InitiateUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
@@ -23,5 +24,9 @@ public class GamesService {
 
     public void completeGameUpload(String studioId, CompleteUploadRequest completeUploadRequest) {
         objectStorageClient.completeUpload(studioId, completeUploadRequest);
+    }
+
+    public GameInfo fetchGameInfo(String studioId, String gameName) throws ObjectDoesNotExistsException, BucketDoesNotExistException {
+        return objectStorageClient.fetchObjectMetadata(studioId, gameName);
     }
 }
