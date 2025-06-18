@@ -1,7 +1,6 @@
 package com.dreamseeker.pseudo_steam.services;
 
-import com.dreamseeker.pseudo_steam.domains.BucketsPage;
-import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
+import com.dreamseeker.pseudo_steam.domains.*;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
@@ -22,4 +21,8 @@ public interface ObjectStorageClient {
     void getObject(String bucketName, String objectKey, String versionId) throws ObjectDoesNotExistsException, BucketDoesNotExistException;
 
     String deleteObject(String bucketName, String objectKey, String versionId) throws BucketDoesNotExistException, ObjectDoesNotExistsException;
+
+    InitiateUploadResponse initiateUpload(String studioId, InitiateUploadRequest initiateUploadRequest);
+
+    void completeUpload(String studioId, CompleteUploadRequest completeUploadRequest);
 }

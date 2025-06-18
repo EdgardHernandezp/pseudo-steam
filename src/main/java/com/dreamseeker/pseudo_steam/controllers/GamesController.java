@@ -1,13 +1,14 @@
 package com.dreamseeker.pseudo_steam.controllers;
 
-import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
+import com.dreamseeker.pseudo_steam.domains.CompleteUploadRequest;
+import com.dreamseeker.pseudo_steam.domains.InitiateUploadRequest;
+import com.dreamseeker.pseudo_steam.domains.InitiateUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import com.dreamseeker.pseudo_steam.services.GamesService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/studios/{studio-id}/games")
@@ -16,13 +17,16 @@ public class GamesController {
 
     private final GamesService gamesService;
 
-    @PostMapping("/{game-name}")
-    public ResponseEntity<ObjectUploadResponse> uploadGame(
-            @PathVariable("studio-id") String studioId,
-            @PathVariable("game-name") String gameName,
-            @RequestParam("file") MultipartFile file) throws BucketDoesNotExistException {
-        ObjectUploadResponse objectUploadResponse = gamesService.uploadGame(studioId, gameName, file);
+    @PostMapping("/initiate")
+    public ResponseEntity<InitiateUploadResponse> initiateGameUpload(@PathVariable("studio-id") String studioId, @RequestBody InitiateUploadRequest initiateUploadRequest) {
+        InitiateUploadResponse objectUploadResponse = gamesService.initiateGameUpload(studioId, initiateUploadRequest);
         return ResponseEntity.ok().body(objectUploadResponse);
+    }
+
+    @PostMapping("/complete")
+    public ResponseEntity<Void> completeGameUpload(@PathVariable("studio-id") String studioId, @RequestBody CompleteUploadRequest completeGameUpload) {
+            gamesService.completeGameUpload(studioId, completeGameUpload);
+            return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{game-name}")
