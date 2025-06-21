@@ -61,11 +61,38 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
                     .build();
             s3Client.putBucketVersioning(versioningRequest);
 
+            addLifecycleConfigs(newBucketName);
+
             return new BucketsPage.Bucket(newBucketName, Instant.now());
         } catch (BucketAlreadyExistsException | BucketAlreadyOwnedByYouException e) {
             log.error("Bucket ({}) already exists", bucketName, e);
             throw new BucketNameExistsException(bucketName, e);
         }
+    }
+
+    private void addLifecycleConfigs(String bucketName) {
+        NoncurrentVersionTransition transition = NoncurrentVersionTransition.builder()
+                .noncurrentDays(30)
+                .storageClass(TransitionStorageClass.STANDARD_IA)
+                .build();
+
+        LifecycleRule rule = LifecycleRule.builder()
+                .id("transition_non_current_versions")
+                .status(ExpirationStatus.ENABLED)
+                .filter(LifecycleRuleFilter.builder().build())
+                .noncurrentVersionTransitions(transition)
+                .build();
+
+        BucketLifecycleConfiguration lifecycleConfig = BucketLifecycleConfiguration.builder()
+                .rules(rule)
+                .build();
+
+        PutBucketLifecycleConfigurationRequest request = PutBucketLifecycleConfigurationRequest.builder()
+                .bucket(bucketName)
+                .lifecycleConfiguration(lifecycleConfig)
+                .build();
+
+        s3Client.putBucketLifecycleConfiguration(request);
     }
 
     @Override

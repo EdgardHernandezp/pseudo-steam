@@ -41,4 +41,8 @@ public class S3ClientUtils {
             throw new RuntimeException(e);
         }
     }
+
+    public GetBucketLifecycleConfigurationResponse fetchLifecycleConfigurationRules(String studioId) {
+        return s3Client.getBucketLifecycleConfiguration(GetBucketLifecycleConfigurationRequest.builder().bucket(studioId).build());
+    }
 }
