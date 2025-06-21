@@ -4,8 +4,8 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
-import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
+import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,10 +14,13 @@ import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.services.s3.model.GetBucketLifecycleConfigurationResponse;
+import software.amazon.awssdk.services.s3.model.LifecycleRule;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -27,6 +30,9 @@ import static org.assertj.core.api.Assertions.*;
 class AWSObjectStorageClientTest {
     @Autowired
     private AWSObjectStorageClient awsObjectStorageClient;
+
+    @Autowired
+    S3ClientUtils s3ClientUtils;
 
     private String studioId;
 
@@ -40,6 +46,11 @@ class AWSObjectStorageClientTest {
         studioId = studioBucket.bucketName();
         assertThat(studioBucket).isNotNull();
         assertThat(studioBucket.bucketName()).isNotNull().isNotBlank();
+
+        GetBucketLifecycleConfigurationResponse getBucketLifecycleConfigurationResponse = s3ClientUtils.fetchLifecycleConfigurationRules(studioId);
+        List<LifecycleRule> rules = getBucketLifecycleConfigurationResponse.rules();
+        assertThat(rules).isNotEmpty().hasSize(1);
+        assertThat(rules.getFirst().id()).isEqualTo("transition_non_current_versions");
     }
 
     @Test
@@ -103,9 +114,9 @@ class AWSObjectStorageClientTest {
     }
 
     @Test
-    @Disabled
-    void deleteBucket() throws BucketNotEmptyException, BucketDoesNotExistException {
+    void clean() throws BucketDoesNotExistException, IOException {
         awsObjectStorageClient.deleteBucket(studioId);
 
+        Files.delete(Path.of("downloads", singleUploadGameName));
     }
 }
