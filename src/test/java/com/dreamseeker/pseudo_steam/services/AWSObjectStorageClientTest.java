@@ -50,7 +50,10 @@ class AWSObjectStorageClientTest {
         GetBucketLifecycleConfigurationResponse getBucketLifecycleConfigurationResponse = s3ClientUtils.fetchLifecycleConfigurationRules(studioId);
         List<LifecycleRule> rules = getBucketLifecycleConfigurationResponse.rules();
         assertThat(rules).isNotEmpty().hasSize(1);
-        assertThat(rules.getFirst().id()).isEqualTo("transition_non_current_versions");
+        LifecycleRule rule = rules.getFirst();
+        assertThat(rule.id()).isEqualTo("Non_current_version_rules");
+        assertThat(rule.hasNoncurrentVersionTransitions()).isTrue();
+        assertThat(rule.noncurrentVersionExpiration().newerNoncurrentVersions()).isEqualTo(5);
     }
 
     @Test

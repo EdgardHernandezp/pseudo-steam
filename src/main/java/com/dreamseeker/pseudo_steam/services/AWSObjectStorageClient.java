@@ -76,11 +76,17 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
                 .storageClass(TransitionStorageClass.STANDARD_IA)
                 .build();
 
+        NoncurrentVersionExpiration expiration = NoncurrentVersionExpiration.builder()
+                .newerNoncurrentVersions(5)
+                .noncurrentDays(60)
+                .build();
+
         LifecycleRule rule = LifecycleRule.builder()
-                .id("transition_non_current_versions")
+                .id("Non_current_version_rules")
                 .status(ExpirationStatus.ENABLED)
                 .filter(LifecycleRuleFilter.builder().build())
                 .noncurrentVersionTransitions(transition)
+                .noncurrentVersionExpiration(expiration)
                 .build();
 
         BucketLifecycleConfiguration lifecycleConfig = BucketLifecycleConfiguration.builder()
