@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyAllOtherAccess",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::{studio-id}",
+        "arn:aws:s3:::{studio-id}/*"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::442599936326:role/Pseudo-steam-bucket-policy-role"
+        }
+      }
+    },
+    {
+      "Sid": "AllowAccessFromRoleOnly",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::442599936326:role/Pseudo-steam-bucket-policy-role"
+      },
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::{studio-id}",
+        "arn:aws:s3:::{studio-id}/*"
+      ]
+    }
+  ]
+}
