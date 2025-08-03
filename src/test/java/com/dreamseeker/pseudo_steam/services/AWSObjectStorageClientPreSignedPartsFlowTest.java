@@ -4,7 +4,7 @@ import com.dreamseeker.pseudo_steam.domains.*;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
-import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
+import com.dreamseeker.pseudo_steam.utils.AWSObjectStorageClientUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,9 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AWSObjectStorageClientPreSignedPartsFlowTest {
 
     @Autowired
-    private AWSObjectStorageClient awsObjectStorageClient;
-    @Autowired
-    private S3ClientUtils s3ClientUtils;
+    private AWSObjectStorageClientUtils awsObjectStorageClient;
 
     private String studioId;
     private InitiateUploadResponse initiateUploadResponse;
@@ -119,7 +117,7 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
     @Test
     @Order(3)
     void metadataIsModifiedSuccessfully() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
-        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, null);
+        ListObjectVersionsResponse listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, null);
         assertThat(listObjectVersionsResponse.versions()).hasSize(1);
 
         awsObjectStorageClient.modifyObjectMetadata(studioId, GAME_NAME, Map.of("genre", STEALTH_GENRE));
@@ -132,7 +130,7 @@ public class AWSObjectStorageClientPreSignedPartsFlowTest {
         assertThat(gameInfo.genre()).isEqualTo(STEALTH_GENRE);
         assertThat(gameInfo.version()).isEqualTo(VERSION);
 
-        listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, null);
+        listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, null);
         assertThat(listObjectVersionsResponse.versions()).hasSize(2);
     }
 

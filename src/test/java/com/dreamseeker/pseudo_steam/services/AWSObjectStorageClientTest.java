@@ -5,7 +5,7 @@ import com.dreamseeker.pseudo_steam.domains.ObjectUploadResponse;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
-import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
+import com.dreamseeker.pseudo_steam.utils.AWSObjectStorageClientUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,10 +29,7 @@ import static org.assertj.core.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AWSObjectStorageClientTest {
     @Autowired
-    private AWSObjectStorageClient awsObjectStorageClient;
-
-    @Autowired
-    S3ClientUtils s3ClientUtils;
+    private AWSObjectStorageClientUtils awsObjectStorageClient;
 
     private String studioId;
 
@@ -47,7 +44,7 @@ class AWSObjectStorageClientTest {
         assertThat(studioBucket).isNotNull();
         assertThat(studioBucket.bucketName()).isNotNull().isNotBlank();
 
-        GetBucketLifecycleConfigurationResponse getBucketLifecycleConfigurationResponse = s3ClientUtils.fetchLifecycleConfigurationRules(studioId);
+        GetBucketLifecycleConfigurationResponse getBucketLifecycleConfigurationResponse = awsObjectStorageClient.fetchLifecycleConfigurationRules(studioId);
         List<LifecycleRule> rules = getBucketLifecycleConfigurationResponse.rules();
         assertThat(rules).isNotEmpty().hasSize(1);
         LifecycleRule rule = rules.getFirst();

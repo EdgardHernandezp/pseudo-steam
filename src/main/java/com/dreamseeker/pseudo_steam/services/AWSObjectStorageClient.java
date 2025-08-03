@@ -6,6 +6,7 @@ import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @AllArgsConstructor
 @Component
+@Primary
 public class AWSObjectStorageClient implements ObjectStorageClient {
 
     private static final long MIN_PART_SIZE = 5 * 1024 * 1024;
@@ -41,7 +43,7 @@ public class AWSObjectStorageClient implements ObjectStorageClient {
     private static final String VERSION = "version";
     private static final String GENRE = "genre";
 
-    private final S3Client s3Client;
+    protected final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
     @Override

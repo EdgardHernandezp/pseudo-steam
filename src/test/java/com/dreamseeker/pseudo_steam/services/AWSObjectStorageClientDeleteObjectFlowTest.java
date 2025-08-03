@@ -4,7 +4,7 @@ import com.dreamseeker.pseudo_steam.domains.BucketsPage;
 import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
-import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
+import com.dreamseeker.pseudo_steam.utils.AWSObjectStorageClientUtils;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,11 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AWSObjectStorageClientDeleteObjectFlowTest {
 
     @Autowired
-    S3ClientUtils s3ClientUtils;
-
-
-    @Autowired
-    private AWSObjectStorageClient awsObjectStorageClient;
+    private AWSObjectStorageClientUtils awsObjectStorageClient;
     private String studioId;
     private static final String gameName = "the-first-of-us";
     private String deleteMarkerVersionId;
@@ -47,13 +43,13 @@ public class AWSObjectStorageClientDeleteObjectFlowTest {
     @Test
     @Order(1)
     void deleteObjectSuccessfully() throws BucketDoesNotExistException, ObjectDoesNotExistsException {
-        assertThat(s3ClientUtils.doesObjectExists(studioId, gameName)).isTrue();
+        assertThat(awsObjectStorageClient.doesObjectExists(studioId, gameName)).isTrue();
 
         deleteMarkerVersionId = awsObjectStorageClient.deleteObject(studioId, gameName, null);
 
-        assertThat(s3ClientUtils.doesObjectExists(studioId, gameName)).isFalse();
+        assertThat(awsObjectStorageClient.doesObjectExists(studioId, gameName)).isFalse();
 
-        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, gameName);
+        ListObjectVersionsResponse listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, gameName);
         assertThat(listObjectVersionsResponse.versions()).hasSize(1);
         assertThat(listObjectVersionsResponse.deleteMarkers()).hasSize(1);
         assertThat(listObjectVersionsResponse.hasDeleteMarkers()).isTrue();
@@ -64,9 +60,9 @@ public class AWSObjectStorageClientDeleteObjectFlowTest {
     void removeDeleteMarkerMakesObjectReappear() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         awsObjectStorageClient.deleteObject(studioId, gameName, deleteMarkerVersionId);
 
-        assertThat(s3ClientUtils.doesObjectExists(studioId, gameName)).isTrue();
+        assertThat(awsObjectStorageClient.doesObjectExists(studioId, gameName)).isTrue();
 
-        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, gameName);
+        ListObjectVersionsResponse listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, gameName);
         assertThat(listObjectVersionsResponse.versions()).hasSize(1);
         assertThat(listObjectVersionsResponse.deleteMarkers()).hasSize(0);
         assertThat(listObjectVersionsResponse.hasDeleteMarkers()).isFalse();
@@ -77,9 +73,9 @@ public class AWSObjectStorageClientDeleteObjectFlowTest {
     void deleteObjectByVersionIdRemovesItPermanently() throws ObjectDoesNotExistsException, BucketDoesNotExistException {
         awsObjectStorageClient.deleteObject(studioId, gameName, versionId);
 
-        assertThat(s3ClientUtils.doesObjectExists(studioId, gameName)).isFalse();
+        assertThat(awsObjectStorageClient.doesObjectExists(studioId, gameName)).isFalse();
 
-        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, gameName);
+        ListObjectVersionsResponse listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, gameName);
         assertThat(listObjectVersionsResponse.versions()).hasSize(0);
         assertThat(listObjectVersionsResponse.hasVersions()).isFalse();
         assertThat(listObjectVersionsResponse.hasDeleteMarkers()).isFalse();

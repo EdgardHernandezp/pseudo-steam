@@ -5,7 +5,7 @@ import com.dreamseeker.pseudo_steam.exceptions.BucketDoesNotExistException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNameExistsException;
 import com.dreamseeker.pseudo_steam.exceptions.BucketNotEmptyException;
 import com.dreamseeker.pseudo_steam.exceptions.ObjectDoesNotExistsException;
-import com.dreamseeker.pseudo_steam.utils.S3ClientUtils;
+import com.dreamseeker.pseudo_steam.utils.AWSObjectStorageClientUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -28,10 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class AWSObjectStorageClientDeleteBucketFlowTest {
 
     @Autowired
-    private AWSObjectStorageClient awsObjectStorageClient;
-
-    @Autowired
-    private S3ClientUtils s3ClientUtils;
+    private AWSObjectStorageClientUtils awsObjectStorageClient;
 
     private String studioId;
     private static final String gameName1 = "cyberpunk-2025";
@@ -49,7 +46,7 @@ public class AWSObjectStorageClientDeleteBucketFlowTest {
 
         awsObjectStorageClient.deleteObject(studioId, gameName2, null);
 
-        ListObjectVersionsResponse listObjectVersionsResponse = s3ClientUtils.fetchListObjectVersions(studioId, null);
+        ListObjectVersionsResponse listObjectVersionsResponse = awsObjectStorageClient.fetchListObjectVersions(studioId, null);
         assertThat(listObjectVersionsResponse.versions()).hasSize(2);
         assertThat(listObjectVersionsResponse.deleteMarkers()).hasSize(1);
     }
@@ -62,8 +59,8 @@ public class AWSObjectStorageClientDeleteBucketFlowTest {
 
     @Test
     void deletingBucketSuccessfully() throws BucketDoesNotExistException {
-        assertThat(s3ClientUtils.doesBucketExists(studioId)).isTrue();
+        assertThat(awsObjectStorageClient.doesBucketExists(studioId)).isTrue();
         awsObjectStorageClient.deleteBucket(studioId);
-        assertThat(s3ClientUtils.doesBucketExists(studioId)).isFalse();
+        assertThat(awsObjectStorageClient.doesBucketExists(studioId)).isFalse();
     }
 }

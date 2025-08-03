@@ -1,15 +1,16 @@
 package com.dreamseeker.pseudo_steam.utils;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.dreamseeker.pseudo_steam.services.AWSObjectStorageClient;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Service
-public class S3ClientUtils {
-
-    @Autowired
-    S3Client s3Client;
+public final class AWSObjectStorageClientUtils extends AWSObjectStorageClient {
+    public AWSObjectStorageClientUtils(S3Client s3Client, S3Presigner s3Presigner) {
+        super(s3Client, s3Presigner);
+    }
 
     public ListObjectVersionsResponse fetchListObjectVersions(String bucketName, String objectKey) {
         return s3Client.listObjectVersions(ListObjectVersionsRequest.builder().bucket(bucketName).prefix(objectKey).build());
@@ -44,5 +45,14 @@ public class S3ClientUtils {
 
     public GetBucketLifecycleConfigurationResponse fetchLifecycleConfigurationRules(String studioId) {
         return s3Client.getBucketLifecycleConfiguration(GetBucketLifecycleConfigurationRequest.builder().bucket(studioId).build());
+    }
+
+    public void assignBucketPolicy(String bucketName, String policy) {
+        PutBucketPolicyRequest putBucketPolicyRequest = PutBucketPolicyRequest.builder()
+                .bucket(bucketName)
+                .policy(policy)
+                .build();
+        PutBucketPolicyResponse putBucketPolicyResponse = s3Client.putBucketPolicy(putBucketPolicyRequest);
+        System.out.println("Policy configured:" + putBucketPolicyResponse.sdkHttpResponse().isSuccessful());
     }
 }
