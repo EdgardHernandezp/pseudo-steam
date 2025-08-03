@@ -27,7 +27,7 @@ class GamesControllerTest {
         final String studioId = "dev.naughty-dog-11111";
         doNothing().when(gamesService).deleteGame(eq(gameName), eq(gameName));
 
-        mockMvc.perform(delete("/buckets/" + studioId + "/games/" + gameName))
+        mockMvc.perform(delete("/studios/" + studioId + "/games/" + gameName))
                 .andExpect(status().isOk());
     }
 }
