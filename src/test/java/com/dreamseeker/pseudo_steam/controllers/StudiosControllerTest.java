@@ -35,7 +35,7 @@ class StudiosControllerTest {
     void whenBucketIsCreatedBucketSuccessfully() throws Exception {
         String bucketName = "test-bucket";
         when(studiosService.createStudio(eq(bucketName))).thenReturn(new BucketsPage.Bucket(bucketName, Instant.now()));
-        mockMvc.perform(post("/buckets".concat("/").concat(bucketName)))
+        mockMvc.perform(post("/studios".concat("/").concat(bucketName)))
                 .andExpect(status().isOk());
     }
 
@@ -46,7 +46,7 @@ class StudiosControllerTest {
                 S3Exception.builder().message("Bucket name is taken").build()
         );
         doThrow(bucketNameExistsException).when(studiosService).createStudio("test-bucket");
-        mockMvc.perform(post("/buckets".concat("/test-bucket")))
+        mockMvc.perform(post("/studios".concat("/test-bucket")))
                 .andExpect(status().isConflict());
     }
 
@@ -55,7 +55,7 @@ class StudiosControllerTest {
         BucketsPage mockBuckets = new BucketsPage("1", List.of(new BucketsPage.Bucket("test-bucket", Instant.now())));
         when(studiosService.fetchStudios(anyInt(), anyString())).thenReturn(mockBuckets);
 
-        mockMvc.perform(get("/buckets").queryParam("limit", "2").queryParam("continuationToken", "1"))
+        mockMvc.perform(get("/studios").queryParam("limit", "2").queryParam("continuationToken", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.buckets[0].bucketName").value("test-bucket"));
     }
@@ -65,7 +65,7 @@ class StudiosControllerTest {
         String bucketName = "test-bucket";
         doNothing().when(studiosService).deleteStudio(bucketName);
 
-        mockMvc.perform(delete("/buckets".concat("/test-bucket")))
+        mockMvc.perform(delete("/studios".concat("/test-bucket")))
                 .andExpect(status().isOk());
     }
 
@@ -76,7 +76,7 @@ class StudiosControllerTest {
         BucketNotEmptyException bucketNotEmptyException = new BucketNotEmptyException(bucketName, bucketNameIsTaken);
         doThrow(bucketNotEmptyException).when(studiosService).deleteStudio(bucketName);
 
-        mockMvc.perform(delete("/buckets".concat("/test-bucket")))
+        mockMvc.perform(delete("/studios".concat("/test-bucket")))
                 .andExpect(status().isConflict());
     }
 
@@ -86,7 +86,7 @@ class StudiosControllerTest {
         BucketDoesNotExistException bucketDoesNotExistsException = new BucketDoesNotExistException(bucketName, NoSuchBucketException.builder().build());
         doThrow(bucketDoesNotExistsException).when(studiosService).deleteStudio(bucketName);
 
-        mockMvc.perform(delete("/buckets".concat("/test-bucket")))
+        mockMvc.perform(delete("/studios".concat("/test-bucket")))
                 .andExpect(status().isNotFound());
     }
 }
