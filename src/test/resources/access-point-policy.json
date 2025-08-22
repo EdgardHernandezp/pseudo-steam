@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowSpecificUser",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::442599936326:user/pseudo-steam-access-point-user"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:DeleteObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": "arn:aws:s3:sa-east-1:442599936326:accesspoint/{access-point-name}/object/*"
+    },
+    {
+      "Sid": "DenyAllOthers",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "*"
+      },
+      "Action": "s3:*",
+      "Resource": "arn:aws:s3:sa-east-1:442599936326:accesspoint/{access-point-name}/object/*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::442599936326:user/pseudo-steam-access-point-user"
+        }
+      }
+    }
+  ]
+}
